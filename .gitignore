@@ -1,0 +1,6 @@
+data/nccos/
+.DS_Store
+.pyc
+.zip
+.ipynb_checkpoints
+__pycache__

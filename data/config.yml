@@ -1,0 +1,21 @@
+islands:
+    - hawaii
+    - oahu
+    - maui
+    - kauai
+    - molokai
+    - lanai
+    - niihau
+    - kahoolawe
+    - kaula
+
+pix_res: &pix_res 4
+
+data_extraction:
+    overlap: 0.8
+    pix_dim: &pix_dim 256
+    pix_pad: 5 # 
+
+data_augmentation: 
+    rotate: True
+    mirror: True
