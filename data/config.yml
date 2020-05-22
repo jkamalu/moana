@@ -12,7 +12,7 @@ islands:
 pix_res: &pix_res 4
 
 data_extraction:
-    overlap: 0.75
+    overlap: 0.8
     pix_dim: &pix_dim 512
 
 data_augmentation: 

@@ -4,17 +4,71 @@ import shutil
 from tqdm.notebook import tqdm
 
 from arcpy import (
+    env,
     Array,
     Polygon,
     Buffer_analysis,
     EliminatePolygonPart_management,
     GeneratePointsAlongLines_management,
     FeatureEnvelopeToPolygon_management,
-    Clip_management
+    Clip_management,
+    FeatureToRaster_conversion
 )
 from arcpy.da import UpdateCursor, SearchCursor, TableToNumPyArray
 
-from utils import path_to_shoreline, path_to_features, path_to_mosaic
+from utils import path_to_shoreline, path_to_mosaic, path_to_habitat, path_to_features
+
+
+def create_shoreline_rectangles(islands, config):
+    size = config["pix_res"] * config["data_extraction"]["pix_dim"]
+    step = int(size * (1 - config["data_extraction"]["overlap"]))
+    _trim_shoreline(islands)
+    _buffer_shoreline(islands, size)
+    _filter_shoreline(islands)
+    _pointilate_shoreline(islands, size, step)
+    _buffer_shoreline_points(islands, size)
+    _envelop_shoreline_points(islands)
+    
+    
+def create_image_rectangles(islands, ext="png"):
+    images = path_to_features("images")
+    for island in islands:
+        in_raster = path_to_mosaic(island)
+        if len(in_raster) > 1:
+            print(f"Please merge {island} mosaics. Skipping...")
+            continue
+        path_to_rects = path_to_features("rects", island, ext="shp")        
+        with SearchCursor(path_to_rects, ["OID@", "SHAPE@"]) as cursor:
+            rectangles = [(oid, " ".join(str(rect.extent).split()[:4])) for oid, rect in cursor]
+        for oid, extent in tqdm(rectangles):
+            out_raster = path_to_features("images", f"{island}-{oid}", ext=ext)
+            Clip_management(
+                in_raster[0],
+                extent,
+                out_raster
+            )
+        for name in os.listdir(images):
+            if not name.endswith(ext):
+                os.remove(os.path.join(images, name))
+                
+                
+def create_mask_rectangles(islands, ext="png"):
+    masks = path_to_features("masks")
+    for island in islands:
+        in_raster = path_to_features("habitats", island, ext="tif")
+        path_to_rects = path_to_features("rects", island, ext="shp")
+        with SearchCursor(path_to_rects, ["OID@", "SHAPE@"]) as cursor:
+            rectangles = [(oid, " ".join(str(rect.extent).split()[:4])) for oid, rect in cursor]
+        for oid, extent in tqdm(rectangles):
+            out_raster = path_to_features("masks", f"{island}-{oid}", ext=ext)
+            Clip_management(
+                in_raster,
+                extent,
+                out_raster
+            )
+        for name in os.listdir(masks):
+            if not name.endswith(ext):
+                os.remove(os.path.join(masks, name))
 
 
 def _trim_shoreline(islands):
@@ -131,38 +185,20 @@ def _envelop_shoreline_points(islands):
             out_features
         )
 
-
-def create_shoreline_rectangles(islands, config):
-    size = config["pix_res"] * config["data_extraction"]["pix_dim"]
-    step = int(size * (1 - config["data_extraction"]["overlap"]))
-    _trim_shoreline(islands)
-    _buffer_shoreline(islands, size)
-    _filter_shoreline(islands)
-    _pointilate_shoreline(islands, size, step)
-    _buffer_shoreline_points(islands, size)
-    _envelop_shoreline_points(islands)
-    
-    
-def create_raster_rectangles(islands, ext="png"):
-    images = path_to_features("images")
+        
+def _rasterize_habitat(islands):
     for island in islands:
-        in_raster = path_to_mosaic(island)
-        if len(in_raster) > 1:
-            print(f"Please merge {island} mosaics before extracting raster rectangles. Skipping...")
+        snap_raster = path_to_mosaic(island)
+        if len(snap_raster) > 1:
+            print(f"Please merge {island} mosaics. Skipping...")
             continue
-        path_to_rects = path_to_features("rects", island, ext="shp")
-        if not os.path.exists(path_to_rects):
-            print(f"Please create {island} shoreline rectangles before extracting raster rectangles. Skipping...")
-            continue           
-        with SearchCursor(path_to_rects, ["OID@", "SHAPE@"]) as cursor:
-            rectangles = [(oid, " ".join(str(rect.extent).split()[:4])) for oid, rect in cursor]
-        for oid, extent in tqdm(rectangles):
-            out_raster = path_to_features("images", f"{island}-{oid}", ext=ext)
-            Clip_management(
-                in_raster[0],
-                extent,
-                out_raster
-            )
-        for name in os.listdir(images):
-            if not name.endswith(ext):
-                os.remove(os.path.join(images, name))
+        # use the cell size of the mosaic for conversion to raster
+        env.snapRaster = snap_raster[0]
+        in_features = path_to_habitat(island)
+        out_raster = path_to_features("habitats", island, ext="tif")
+        FeatureToRaster_conversion(
+            in_features, 
+            "M_STRUCT", 
+            out_raster, 
+            "#"
+        )
