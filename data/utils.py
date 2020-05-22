@@ -7,7 +7,7 @@ from arcpy import Array, Polygon, Polyline, PointGeometry, SpatialReference
 from arcpy.da import UpdateCursor
 
 
-def ROOT():
+def root():
     return os.path.dirname(os.path.abspath(__file__))
 
 
@@ -28,19 +28,19 @@ def load_config(filename):
 
 def path_to_shoreline(island, source="nccos", year="2007"):
     shapefile = f"{_capitalize(island)}{os.extsep}shp"
-    return os.path.join(ROOT(), source, year, "Shorelines", "Shorelines", shapefile)
+    return os.path.join(root(), source, year, "Shorelines", "Shorelines", shapefile)
 
 
 def path_to_habitat(island, source="nccos", year="2007"):
     if island == "niihau" or island == "kaula":
         island = "niihau_kaula"
     shapefile = f"{island}{os.extsep}shp"
-    return os.path.join(ROOT(), source, year, "Habitat_GIS_Data", shapefile)
+    return os.path.join(root(), source, year, "Habitat_GIS_Data", shapefile)
 
 
 def path_to_mosaic(island, source="nccos", year="2007"):
     ikonos = f"{_capitalize(island)}_IKONOS"
-    dirname = os.path.join(ROOT(), source, year, ikonos)
+    dirname = os.path.join(root(), source, year, ikonos)
     paths = []
     for fname in os.listdir(dirname):
         fname_lower = fname.lower()
@@ -49,14 +49,36 @@ def path_to_mosaic(island, source="nccos", year="2007"):
     return paths
     
     shapefile = f"{_capitalize(island)}{os.extsep}shp"
-    return os.path.join(ROOT(), source, year, ikonos, shapefile)
+    return os.path.join(root(), source, year, ikonos, shapefile)
 
 
-def path_to_features(tag, basename="", source="nccos", year="2007", outdir="output", ext=None):
-    if ext is None:
-        return os.path.join(ROOT(), source, year, "output", tag, basename)
-    return "{}{}{}".format(os.path.join(ROOT(), source, year, outdir, tag, basename), os.extsep, ext)
+def path_to_images(source="nccos", year="2007"):
+    images = os.path.join(root(), source, year, "masks")
+    if not os.path.exists(o,ages):
+        os.makedirs(images)
+    return images
+
     
+def path_to_masks(source="nccos", year="2007"):
+    masks = os.path.join(root(), source, year, "masks")
+    if not os.path.exists(masks):
+        os.makedirs(masks)
+    return masks
+
+
+def path_to_temp(subfolder, source="nccos", year="2007"):
+    temp = os.path.join(root(), source, year, "temp")
+    if not os.path.exists(temp):
+        os.makedirs(temp)
+    return temp
+
+
+##                                       ##
+#                                         #
+# DEPRECATED CODE NOT USED IN DEVELOPMENT #
+#                                         #
+##                                       ##
+
 
 def _get_segment_endpoint(segment, point_A, lower, upper, distance, tol):
     """

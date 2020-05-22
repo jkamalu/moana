@@ -16,59 +16,103 @@ from arcpy import (
 )
 from arcpy.da import UpdateCursor, SearchCursor, TableToNumPyArray
 
-from utils import path_to_shoreline, path_to_mosaic, path_to_habitat, path_to_features
+from utils import (
+    path_to_shoreline, 
+    path_to_mosaic, 
+    path_to_habitat, 
+    path_to_images,
+    path_to_masks,
+    path_to_temp
+)
 
 
 def create_shoreline_rectangles(islands, config):
+    
     size = config["pix_res"] * config["data_extraction"]["pix_dim"]
     step = int(size * (1 - config["data_extraction"]["overlap"]))
+    
+    # remove "islands" along shoreline
     _trim_shoreline(islands)
+    
+    # buffer shoreline 
     _buffer_shoreline(islands, size)
+    
+    # remove interior polygons
     _filter_shoreline(islands)
+    
+    # generate points along shoreline
     _pointilate_shoreline(islands, size, step)
+    
+    # buffer shoreline points
     _buffer_shoreline_points(islands, size)
+    
+    # convert circular buffer to square
     _envelop_shoreline_points(islands)
     
     
-def create_image_rectangles(islands, ext="png"):
-    images = path_to_features("images")
+def create_image_rectangles(islands):
+    
     for island in islands:
+        
+        # get path to image mosaic
         in_raster = path_to_mosaic(island)
         if len(in_raster) > 1:
             print(f"Please merge {island} mosaics. Skipping...")
             continue
-        path_to_rects = path_to_features("rects", island, ext="shp")        
+        
+        # get rectangle extents
+        path_to_rects = os.path.join(path_to_temp(), "rects5", f"{island}.shp")
         with SearchCursor(path_to_rects, ["OID@", "SHAPE@"]) as cursor:
-            rectangles = [(oid, " ".join(str(rect.extent).split()[:4])) for oid, rect in cursor]
+            rectangles = []
+            for oid, rect in cursor:
+                extent = " ".join(str(rect.extent).split()[:4])
+                rectangles.append((oid, extent))
+        
+        # clip image mosaic to rectangles and save
         for oid, extent in tqdm(rectangles):
-            out_raster = path_to_features("images", f"{island}-{oid}", ext=ext)
+            path_to_raster = os.path.join(path_to_images(), f"{island}-{oid}.png")
             Clip_management(
                 in_raster[0],
                 extent,
-                out_raster
+                path_to_raster
             )
-        for name in os.listdir(images):
-            if not name.endswith(ext):
-                os.remove(os.path.join(images, name))
+        
+        # delete all metadata
+        _path_to_images = path_to_images()
+        for name in os.listdir(_path_to_images):
+            if not name.endswith("png"):
+                os.remove(os.path.join(_path_to_images, name))
                 
                 
-def create_mask_rectangles(islands, ext="png"):
-    masks = path_to_features("masks")
+def create_mask_rectangles(islands):
+    
     for island in islands:
-        in_raster = path_to_features("habitats", island, ext="tif")
-        path_to_rects = path_to_features("rects", island, ext="shp")
+        
+        # get path to mask raster
+        in_raster = os.path.join(path_to_temp(), "habitats", f"{island}.tif")
+        
+        # get rectangle extents
+        path_to_rects = os.path.join(path_to_temp(), "rects5", f"{island}.shp")
         with SearchCursor(path_to_rects, ["OID@", "SHAPE@"]) as cursor:
-            rectangles = [(oid, " ".join(str(rect.extent).split()[:4])) for oid, rect in cursor]
+            rectangles = []
+            for oid, rect in cursor:
+                extent = " ".join(str(rect.extent).split()[:4])
+                rectangles.append((oid, extent))
+        
+        # clip mask raster to rectangles and save
         for oid, extent in tqdm(rectangles):
-            out_raster = path_to_features("masks", f"{island}-{oid}", ext=ext)
+            path_to_raster = os.path.join(path_to_masks(), f"{island}-{oid}.png")
             Clip_management(
                 in_raster,
                 extent,
-                out_raster
+                path_to_raster
             )
-        for name in os.listdir(masks):
-            if not name.endswith(ext):
-                os.remove(os.path.join(masks, name))
+            
+        # delete all metadata
+        _path_to_masks = path_to_masks()
+        for name in os.listdir(_path_to_masks):
+            if not name.endswith("png"):
+                os.remove(os.path.join(_path_to_masks, name))
 
 
 def _trim_shoreline(islands):
@@ -103,7 +147,7 @@ def _buffer_shoreline(islands, size):
     """
     for island in islands:
         in_features = path_to_shoreline(island)
-        out_features = path_to_features("temp1", island)
+        out_features = os.path.join(path_to_temp(), "rects1", island) 
         shutil.rmtree(out_features, ignore_errors=True)
         os.makedirs(os.path.dirname(out_features), exist_ok=True)
         Buffer_analysis(
@@ -120,8 +164,8 @@ def _filter_shoreline(islands):
     leaving the outer buffer polygon.
     """
     for island in islands:
-        in_features = path_to_features("temp1", island, ext="shp")
-        out_features = path_to_features("temp2", island)
+        in_features = os.path.join(path_to_temp(), "rects1", f"{island}.shp") 
+        out_features = os.path.join(path_to_temp(), "rects2", island) 
         shutil.rmtree(out_features, ignore_errors=True)
         os.makedirs(os.path.dirname(out_features), exist_ok=True)
         EliminatePolygonPart_management(
@@ -139,8 +183,8 @@ def _pointilate_shoreline(islands, size, step):
     interval.
     """
     for island in islands:
-        in_features = path_to_features("temp2", island, ext="shp")
-        out_features = path_to_features("temp3", island)
+        in_features = os.path.join(path_to_temp(), "rects2", f"{island}.shp") 
+        out_features = os.path.join(path_to_temp(), "rects3", island) 
         shutil.rmtree(out_features, ignore_errors=True)
         os.makedirs(os.path.dirname(out_features), exist_ok=True)        
         GeneratePointsAlongLines_management(
@@ -159,8 +203,8 @@ def _buffer_shoreline_points(islands, size):
     Note: Almost identical to above buffer analysis.
     """
     for island in islands:
-        in_features = path_to_features("temp3", island, ext="shp")
-        out_features = path_to_features("temp4", island)
+        in_features = os.path.join(path_to_temp(), "rects3", f"{island}.shp") 
+        out_features = os.path.join(path_to_temp(), "rects4", island) 
         shutil.rmtree(out_features, ignore_errors=True)
         os.makedirs(os.path.dirname(out_features), exist_ok=True)
         Buffer_analysis(
@@ -176,8 +220,8 @@ def _envelop_shoreline_points(islands):
     polygons.
     """
     for island in islands:
-        in_features = path_to_features("temp4", island, ext="shp")
-        out_features = path_to_features("rects", island)
+        in_features = os.path.join(path_to_temp(), "rects4", f"{island}.shp") 
+        out_features = os.path.join(path_to_temp(), "rects5", island) 
         shutil.rmtree(out_features, ignore_errors=True)
         os.makedirs(os.path.dirname(out_features), exist_ok=True)
         FeatureEnvelopeToPolygon_management(
@@ -195,7 +239,7 @@ def _rasterize_habitat(islands):
         # use the cell size of the mosaic for conversion to raster
         env.snapRaster = snap_raster[0]
         in_features = path_to_habitat(island)
-        out_raster = path_to_features("habitats", island, ext="tif")
+        out_raster = os.path.join(path_to_temp(), "habitats", f"{island}.tif")
         FeatureToRaster_conversion(
             in_features, 
             "M_STRUCT", 
