@@ -17,12 +17,6 @@ def _capitalize(x):
     return x[0].upper() + x[1:]
 
 
-def load_config(filename):
-    with open("config.yml", "rt") as file:
-        config = yaml.load(file.read(), Loader=yaml.Loader)
-    return config
-
-
 def path_to_shoreline(island, source="nccos", year="2007"):
     shapefile = f"{_capitalize(island)}{os.extsep}shp"
     return os.path.join(root(), source, year, "Shorelines", "Shorelines", shapefile)
@@ -50,8 +44,8 @@ def path_to_mosaic(island, source="nccos", year="2007"):
 
 
 def path_to_images(source="nccos", year="2007"):
-    images = os.path.join(root(), source, year, "masks")
-    if not os.path.exists(o,ages):
+    images = os.path.join(root(), source, year, "images")
+    if not os.path.exists(images):
         os.makedirs(images)
     return images
 
@@ -63,7 +57,7 @@ def path_to_masks(source="nccos", year="2007"):
     return masks
 
 
-def path_to_temp(subfolder, source="nccos", year="2007"):
+def path_to_temp(source="nccos", year="2007"):
     temp = os.path.join(root(), source, year, "temp")
     if not os.path.exists(temp):
         os.makedirs(temp)

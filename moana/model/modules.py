@@ -4,12 +4,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from model.utils import pad_fn
+from .utils import pad_fn
 
 
 class RDUNet(nn.Module):
     
-    def __init__(self, dimension, channels=64, depth=4, **kwargs):
+    def __init__(self, dimension, classes, channels=64, depth=4, **kwargs):
         """
         The RDU-Net as proposed by Sahmsolmoali et al.
         (See https://arxiv.org/abs/2003.07784)
@@ -45,7 +45,7 @@ class RDUNet(nn.Module):
             up_blocks.insert(0, UpBlock(in_channels, out_channels))
             
         # the output layer
-        self.output = nn.Conv2d(channels, 1, (1, 1))
+        self.output = nn.Conv2d(channels, classes, (1, 1))
         
         self.down_blocks = nn.ModuleList(down_blocks)
         self.up_blocks = nn.ModuleList(up_blocks)

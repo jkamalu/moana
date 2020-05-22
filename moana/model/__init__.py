@@ -1,2 +1,2 @@
 from model import utils
-from model.modules import *
+from model import modules
