@@ -1,5 +1,26 @@
 import random
+
 import torchvision.transforms.functional as TF
+
+
+class RandomCrop:
+
+    def __init__(self, size):
+        self.size = size
+        
+    def get_params(self, image):
+        w, h = image.size
+        th, tw = self.size
+        if w == tw and h == th:
+            return 0, 0, h, w
+        i = random.randint(0, h - th)
+        j = random.randint(0, w - tw)
+        return i, j, th, tw
+
+    def __call__(self, sample):
+        x, y = sample
+        i, j, h, w = self.get_params(x)
+        return TF.crop(x, i, j, h, w), TF.crop(y, i, j, h, w)
 
 
 class ToTensor:

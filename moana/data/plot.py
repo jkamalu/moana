@@ -15,7 +15,7 @@ def imshow_image(tensor, nrow):
 
 def imshow_label(tensor, nrow):
     if len(tensor.shape) < 4:
-        tensor = tensor.unsqueeze(0)
+        tensor = tensor.unsqueeze(1)
     temp = torch.nn.functional.pad(tensor, [20, 20, 20, 20])
     grid = torchvision.utils.make_grid(temp, nrow=nrow).permute(1, 2, 0).double()
     fig = plt.imshow(grid / 3, cmap=plt.cm.gray)

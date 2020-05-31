@@ -72,7 +72,7 @@ class DenseNet(nn.Module):
         """
         super().__init__(**kwargs)
         
-        self.blocks = []
+        blocks = []
         self.residuals = []
         
         factors = math.ceil(math.log2(n_layers))
@@ -89,12 +89,16 @@ class DenseNet(nn.Module):
                 kernel = 1
             
             # build layers and store connectivity
-            self.blocks.append([
+            block = nn.ModuleList([
                 nn.BatchNorm2d(in_channels),
                 nn.PReLU(), 
                 nn.Conv2d(in_channels, channels, kernel, padding=pad_fn(kernel, 1))
-            ])                        
+            ])
+            
+            blocks.append(block)                        
             self.residuals.append(residual)
+            
+        self.blocks = nn.ModuleList(blocks)
             
     def forward(self, x):
         outputs = []
