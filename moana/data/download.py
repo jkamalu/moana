@@ -1,11 +1,11 @@
 import os
 import sys
 
-from utils import ROOT
+from utils import root
 
 def download_nccos(y2003, y2007):
 
-    dirname = os.path.join(ROOT, "nccos")
+    dirname = os.path.join(root(), "nccos")
     if not os.path.isdir(dirname):
         os.mkdir(dirname)
 
@@ -25,7 +25,7 @@ def download_nccos(y2003, y2007):
 
 
 def download_nccos2007():
-    dirname = os.path.join(ROOT, "nccos", "2007")
+    dirname = os.path.join(root(), "nccos", "2007")
     if not os.path.isdir(dirname):
         os.mkdir(dirname)
 
